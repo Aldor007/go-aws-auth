@@ -32,7 +32,11 @@ func stringToSignS3(request *http.Request) string {
 	if request.Header.Get("Date") != "" {
 		str += request.Header.Get("Date")
 	} else {
-		str += timestampS3()
+		if request.Header.Get("X-Amz-Date") != "" {
+			str += ""
+		} else {
+			str += timestampS3()
+		}
 	}
 
 	str += "\n"
@@ -43,6 +47,7 @@ func stringToSignS3(request *http.Request) string {
 	}
 
 	str += canonicalResourceS3(request)
+
 
 	return str
 }
@@ -98,7 +103,6 @@ func canonicalResourceS3(request *http.Request) string {
 }
 
 func prepareRequestS3(request *http.Request) *http.Request {
-	request.Header.Set("Date", timestampS3())
 	if request.URL.Path == "" {
 		request.URL.Path += "/"
 	}
