@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-func hashedCanonicalRequestV4(request *http.Request, meta *metadata) string {
+func hashedCanonicalRequestV4(request *http.Request, meta *metadata, signedHeaders []string) string {
 	// TASK 1. http://docs.aws.amazon.com/general/latest/gr/sigv4-create-canonical-request.html
 
 	payload := readAndReplaceBody(request)
@@ -19,14 +19,33 @@ func hashedCanonicalRequestV4(request *http.Request, meta *metadata) string {
 
 	var sortedHeaderKeys []string
 	for key, _ := range request.Header {
+		keyLower := strings.ToLower(key)
 		switch key {
 		case "Content-Md5", "Host":
 		default:
-			if !strings.HasPrefix(key, "X-Amz-") {
+			foundInSigned := false
+			for _, h := range signedHeaders {
+				if keyLower == h {
+					arleadyOnList := false
+					for _, sh := range sortedHeaderKeys {
+						if sh == h {
+							arleadyOnList = true
+							break
+						}
+					}
+
+					if arleadyOnList == false {
+						foundInSigned = true
+					}
+					break
+				}
+			}
+
+			if !foundInSigned && !strings.HasPrefix(key, "X-Amz-") {
 				continue
 			}
 		}
-		sortedHeaderKeys = append(sortedHeaderKeys, strings.ToLower(key))
+		sortedHeaderKeys = append(sortedHeaderKeys, keyLower)
 	}
 	sort.Strings(sortedHeaderKeys)
 
@@ -45,7 +64,8 @@ func hashedCanonicalRequestV4(request *http.Request, meta *metadata) string {
 		}
 		headersToSign += key + ":" + value + "\n"
 	}
-	meta.signedHeaders = concat(";", sortedHeaderKeys...)
+
+	 meta.signedHeaders = concat(";", sortedHeaderKeys...)
 	canonicalRequest := concat("\n", request.Method, normuri(request.URL.Path), normquery(request.URL.Query()), headersToSign, meta.signedHeaders, payloadHash)
 
 	return hashSHA256([]byte(canonicalRequest))
@@ -72,7 +92,6 @@ func stringToSignV4(request *http.Request, hashedCanonReq string, meta *metadata
 
 func signatureV4(signingKey []byte, stringToSign string) string {
 	// TASK 3. http://docs.aws.amazon.com/general/latest/gr/sigv4-calculate-signature.html
-
 	return hex.EncodeToString(hmacSHA256(signingKey, stringToSign))
 }
 

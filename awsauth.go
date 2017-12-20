@@ -42,7 +42,7 @@ func Sign(request *http.Request, credentials ...Credentials) *http.Request {
 // region/service. If either region or service are empty, it will attempt to
 // determine them from the domain. It automatically chooses the best
 // authentication scheme based on the service the request is going to.
-func SignForRegion(request *http.Request, region, service string, credentials ...Credentials) *http.Request {
+func SignForRegion(request *http.Request, region, service string, signedHeaders []string, credentials ...Credentials) *http.Request {
 	if service == "" {
 		service, _ = serviceAndRegion(request.URL.Host)
 	}
@@ -54,7 +54,7 @@ func SignForRegion(request *http.Request, region, service string, credentials ..
 	case 3:
 		return Sign3(request, credentials...)
 	case 4:
-		return Sign4ForRegion(request, region, service, credentials...)
+		return Sign4ForRegion(request, region, service, signedHeaders, credentials...)
 	case -1:
 		return SignS3(request, credentials...)
 	}
@@ -64,11 +64,11 @@ func SignForRegion(request *http.Request, region, service string, credentials ..
 
 // Sign4 signs a request with Signed Signature Version 4.
 func Sign4(request *http.Request, credentials ...Credentials) *http.Request {
-	return Sign4ForRegion(request, "", "", credentials...)
+	return Sign4ForRegion(request, "", "", []string{}, credentials...)
 }
 
 // Sign4ForRegion signs a request with Signed Signature Version 4, for an explicit region/service.
-func Sign4ForRegion(request *http.Request, region, service string, credentials ...Credentials) *http.Request {
+func Sign4ForRegion(request *http.Request, region, service string, signedHeaders []string, credentials ...Credentials) *http.Request {
 	keys := chooseKeys(credentials)
 
 	// Add the X-Amz-Security-Token header when using STS
@@ -82,7 +82,7 @@ func Sign4ForRegion(request *http.Request, region, service string, credentials .
 	meta.service = service
 
 	// Task 1
-	hashedCanonReq := hashedCanonicalRequestV4(request, meta)
+	hashedCanonReq := hashedCanonicalRequestV4(request, meta, signedHeaders)
 
 	// Task 2
 	stringToSign := stringToSignV4(request, hashedCanonReq, meta)
