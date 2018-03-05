@@ -82,10 +82,10 @@ func Sign4ForRegion(request *http.Request, region, service string, signedHeaders
 	meta.service = service
 
 	// Task 1
-	hashedCanonReq := hashedCanonicalRequestV4(request, meta, signedHeaders)
+	hashedCanonReq := hashedCanonicalRequestV4(request, meta, signedHeaders, false)
 
 	// Task 2
-	stringToSign := stringToSignV4(request, hashedCanonReq, meta)
+	stringToSign := stringToSignV4(request, hashedCanonReq, meta, request.Header.Get("X-Amz-Date"))
 
 	// Task 3
 	signingKey := signingKeyV4(keys.SecretAccessKey, meta.date, meta.region, meta.service)
@@ -185,6 +185,32 @@ func SignS3Url(request *http.Request, expire time.Time, credentials ...Credentia
 
 	return request
 }
+
+
+func PreSign(request *http.Request, expire time.Time, region, service string, signedHeaders []string,  credentials ...Credentials) *http.Request {
+	keys := chooseKeys(credentials)
+
+	meta := new(metadata)
+	meta.region = region
+	meta.service = service
+
+	// Task 1
+	hashedCanonReq := hashedCanonicalRequestV4(request, meta, signedHeaders, true)
+
+	// Task 2
+	stringToSign := stringToSignV4(request, hashedCanonReq, meta, request.URL.Query().Get("X-Amz-Date"))
+
+	// Task 3
+	signingKey := signingKeyV4(keys.SecretAccessKey, meta.date, meta.region, meta.service)
+	signature := signatureV4(signingKey, stringToSign)
+	query := request.URL.Query()
+	query.Set("X-Amz-Signature", signature)
+	query.Set("X-Amz-Expires", timeToUnixEpochString(expire))
+	request.URL.RawQuery = query.Encode()
+
+	return request
+}
+
 
 // expired checks to see if the temporary credentials from an IAM role are
 // within 4 minutes of expiration (The IAM documentation says that new keys
