@@ -187,7 +187,7 @@ func SignS3Url(request *http.Request, expire time.Time, credentials ...Credentia
 }
 
 
-func PreSign(request *http.Request, expire time.Time, region, service string, signedHeaders []string,  credentials ...Credentials) *http.Request {
+func PreSign(request *http.Request, region, service string, signedHeaders []string,  credentials ...Credentials) *http.Request {
 	keys := chooseKeys(credentials)
 
 	meta := new(metadata)
@@ -205,7 +205,6 @@ func PreSign(request *http.Request, expire time.Time, region, service string, si
 	signature := signatureV4(signingKey, stringToSign)
 	query := request.URL.Query()
 	query.Set("X-Amz-Signature", signature)
-	query.Set("X-Amz-Expires", timeToUnixEpochString(expire))
 	request.URL.RawQuery = query.Encode()
 
 	return request

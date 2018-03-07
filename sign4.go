@@ -15,7 +15,7 @@ func hashedCanonicalRequestV4(request *http.Request, meta *metadata, signedHeade
 		payloadHash = "UNSIGNED-PAYLOAD"
 	} else {
 		payload := readAndReplaceBody(request)
-		payloadHash := hashSHA256(payload)
+		payloadHash = hashSHA256(payload)
 		request.Header.Set("X-Amz-Content-Sha256", payloadHash)
 	}
 
