@@ -7,12 +7,17 @@ import (
 	"strings"
 )
 
-func hashedCanonicalRequestV4(request *http.Request, meta *metadata, signedHeaders []string) string {
+func hashedCanonicalRequestV4(request *http.Request, meta *metadata, signedHeaders []string, queryString bool) string {
 	// TASK 1. http://docs.aws.amazon.com/general/latest/gr/sigv4-create-canonical-request.html
 
-	payload := readAndReplaceBody(request)
-	payloadHash := hashSHA256(payload)
-	request.Header.Set("X-Amz-Content-Sha256", payloadHash)
+	var  payloadHash string
+	if queryString {
+		payloadHash = "UNSIGNED-PAYLOAD"
+	} else {
+		payload := readAndReplaceBody(request)
+		payloadHash = hashSHA256(payload)
+		request.Header.Set("X-Amz-Content-Sha256", payloadHash)
+	}
 
 	// Set this in header values to make it appear in the range of headers to sign
 	request.Header.Set("Host", request.Host)
@@ -71,10 +76,8 @@ func hashedCanonicalRequestV4(request *http.Request, meta *metadata, signedHeade
 	return hashSHA256([]byte(canonicalRequest))
 }
 
-func stringToSignV4(request *http.Request, hashedCanonReq string, meta *metadata) string {
+func stringToSignV4(request *http.Request, hashedCanonReq string, meta *metadata, requestTs string) string {
 	// TASK 2. http://docs.aws.amazon.com/general/latest/gr/sigv4-create-string-to-sign.html
-
-	requestTs := request.Header.Get("X-Amz-Date")
 
 	meta.algorithm = "AWS4-HMAC-SHA256"
 	service, region := serviceAndRegion(request.Host)
