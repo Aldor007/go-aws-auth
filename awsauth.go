@@ -197,8 +197,14 @@ func PreSign(request *http.Request, region, service string, signedHeaders []stri
 	// Task 1
 	hashedCanonReq := hashedCanonicalRequestV4(request, meta, signedHeaders, true)
 
+	ts := request.URL.Query().Get("X-Amz-Date")
+
+	if ts == ""  || len(ts) < 8{
+		ts = time.Now().Format(timeFormatV4)
+	}
+
 	// Task 2
-	stringToSign := stringToSignV4(request, hashedCanonReq, meta, request.URL.Query().Get("X-Amz-Date"))
+	stringToSign := stringToSignV4(request, hashedCanonReq, meta, ts)
 
 	// Task 3
 	signingKey := signingKeyV4(keys.SecretAccessKey, meta.date, meta.region, meta.service)
